@@ -1,23 +1,53 @@
 name: Deploy Fabric PROD
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      deployment_mode:
+        description: "Modo de despliegue"
+        required: true
+        default: "changed"
+        type: choice
+        options:
+          - changed
+          - type
+          - single
+          - all_allowed
+
+      artifact_type:
+        description: "Tipo de artefacto, solo para modo type"
+        required: false
+        default: "Report"
+        type: choice
+        options:
+          - Report
+          - SemanticModel
+          - Notebook
+          - DataPipeline
+          - VariableLibrary
+
+      artifact_name:
+        description: "Elemento concreto, por ejemplo InformeDummy.Report"
+        required: false
+        type: string
 
 jobs:
-
   deploy-fabric-prod:
-
     runs-on: ubuntu-latest
-
     environment: PROD
 
-    steps:
+    permissions:
+      contents: read
 
+    steps:
       - name: Checkout repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          # Necesario para que git diff pueda comparar commits.
+          fetch-depth: 0
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -27,15 +57,28 @@ jobs:
 
       - name: Instalar Fabric CICD
         run: |
-          pip install fabric-cicd==1.3.0
+          python -m pip install fabric-cicd==1.3.0
 
-      - name: Ejecutar Deploy
+      - name: Mostrar configuración del despliegue
+        run: |
+          echo "Modo: ${{ inputs.deployment_mode }}"
+          echo "Tipo: ${{ inputs.artifact_type }}"
+          echo "Elemento: ${{ inputs.artifact_name }}"
+          echo "Commit actual: ${{ github.sha }}"
+
+      - name: Ejecutar despliegue a PRO_Gold
         env:
           CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
           TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
           TARGET_WORKSPACE_ID: ${{ secrets.FABRIC_PROD_WORKSPACE_ID }}
 
+          DEPLOYMENT_MODE: ${{ inputs.deployment_mode }}
+          ARTIFACT_TYPE: ${{ inputs.artifact_type }}
+          ARTIFACT_NAME: ${{ inputs.artifact_name }}
+
+          # Compara el commit actual con el anterior.
+          GIT_COMPARE_REF: HEAD~1
+
         run: |
           python deploy.py
-
