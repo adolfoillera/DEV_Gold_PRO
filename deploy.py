@@ -1,11 +1,13 @@
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 from azure.identity import ClientSecretCredential
 
 from fabric_cicd import (
     FabricWorkspace,
+    ItemType,
     append_feature_flag,
     get_changed_items,
     publish_all_items,
@@ -13,9 +15,10 @@ from fabric_cicd import (
 
 
 # ============================================================
-# Configuración del repositorio
+# Directorio del repositorio
 # ============================================================
 
+# deploy.py está situado en la raíz del repositorio.
 repo_root = Path(__file__).resolve().parent
 repository_directory = repo_root
 
@@ -25,7 +28,9 @@ if not repository_directory.is_dir():
         f"{repository_directory}"
     )
 
-print(f"Repositorio Fabric: {repository_directory}")
+print(
+    f"Repositorio Fabric: {repository_directory}"
+)
 
 
 # ============================================================
@@ -45,9 +50,10 @@ required_variables = {
 }
 
 missing_variables = [
-    name
-    for name, value in required_variables.items()
-    if not value
+    variable_name
+    for variable_name, variable_value
+    in required_variables.items()
+    if not variable_value
 ]
 
 if missing_variables:
@@ -58,18 +64,13 @@ if missing_variables:
 
 
 # ============================================================
-# Parámetros de selección
+# Inputs recibidos desde GitHub Actions
 # ============================================================
 
-deployment_mode = os.getenv(
-    "DEPLOYMENT_MODE",
-    "changed",
+deployment_scope = os.getenv(
+    "DEPLOYMENT_SCOPE",
+    "changed_all",
 ).strip().lower()
-
-artifact_type = os.getenv(
-    "ARTIFACT_TYPE",
-    "",
-).strip()
 
 artifact_name = os.getenv(
     "ARTIFACT_NAME",
@@ -81,17 +82,45 @@ git_compare_ref = os.getenv(
     "HEAD~1",
 ).strip()
 
+target_environment = os.getenv(
+    "TARGET_ENVIRONMENT",
+    "PROD",
+).strip().upper()
+
 
 # ============================================================
-# Tipos permitidos
+# Exclusiones permanentes
 # ============================================================
+
+# Estos dos tipos nunca se desplegarán, con independencia
+# del alcance seleccionado en GitHub Actions.
+FORBIDDEN_ITEM_TYPES = {
+    "Warehouse",
+    "Lakehouse",
+}
+
+forbidden_item_types_lower = {
+    item_type.lower()
+    for item_type in FORBIDDEN_ITEM_TYPES
+}
+
+
+# ============================================================
+# Obtener todos los tipos soportados por fabric-cicd
+# ============================================================
+
+# all_allowed y changed_all utilizarán todos los tipos
+# reconocidos por la versión instalada de fabric-cicd,
+# excepto Warehouse y Lakehouse.
+all_supported_item_types = [
+    item_type.value
+    for item_type in ItemType
+]
 
 allowed_item_types = [
-    "Report",
-    "SemanticModel",
-    "Notebook",
-    "DataPipeline",
-    "VariableLibrary",
+    item_type
+    for item_type in all_supported_item_types
+    if item_type.lower() not in forbidden_item_types_lower
 ]
 
 allowed_item_types_lookup = {
@@ -99,96 +128,248 @@ allowed_item_types_lookup = {
     for item_type in allowed_item_types
 }
 
-forbidden_item_types = {
-    "lakehouse",
-    "warehouse",
+
+# ============================================================
+# Tipos utilizados por las opciones explícitas del workflow
+# ============================================================
+
+EXPLICIT_ITEM_TYPES = {
+    "report": "Report",
+    "semanticmodel": "SemanticModel",
+    "notebook": "Notebook",
+    "datapipeline": "DataPipeline",
+    "variablelibrary": "VariableLibrary",
 }
 
 
 # ============================================================
-# Validación del modo
+# Configuración de alcances
 # ============================================================
 
-allowed_modes = {
-    "changed",
-    "type",
-    "single",
-    "all_allowed",
+scope_configuration = {
+    # --------------------------------------------------------
+    # Todos los elementos modificados permitidos
+    # --------------------------------------------------------
+    "changed_all": {
+        "changed_only": True,
+        "item_types": allowed_item_types,
+    },
+
+    # --------------------------------------------------------
+    # Elementos modificados por tipo
+    # --------------------------------------------------------
+    "changed_reports": {
+        "changed_only": True,
+        "item_types": ["Report"],
+    },
+    "changed_semantic_models": {
+        "changed_only": True,
+        "item_types": ["SemanticModel"],
+    },
+    "changed_notebooks": {
+        "changed_only": True,
+        "item_types": ["Notebook"],
+    },
+    "changed_data_pipelines": {
+        "changed_only": True,
+        "item_types": ["DataPipeline"],
+    },
+    "changed_variable_libraries": {
+        "changed_only": True,
+        "item_types": ["VariableLibrary"],
+    },
+
+    # --------------------------------------------------------
+    # Todos los elementos permitidos
+    # --------------------------------------------------------
+    "all_allowed": {
+        "changed_only": False,
+        "item_types": allowed_item_types,
+    },
+
+    # --------------------------------------------------------
+    # Todos los elementos de un tipo
+    # --------------------------------------------------------
+    "all_reports": {
+        "changed_only": False,
+        "item_types": ["Report"],
+    },
+    "all_semantic_models": {
+        "changed_only": False,
+        "item_types": ["SemanticModel"],
+    },
+    "all_notebooks": {
+        "changed_only": False,
+        "item_types": ["Notebook"],
+    },
+    "all_data_pipelines": {
+        "changed_only": False,
+        "item_types": ["DataPipeline"],
+    },
+    "all_variable_libraries": {
+        "changed_only": False,
+        "item_types": ["VariableLibrary"],
+    },
+
+    # --------------------------------------------------------
+    # Elemento concreto
+    # --------------------------------------------------------
+    "single": {
+        "changed_only": False,
+        "item_types": None,
+    },
 }
 
-if deployment_mode not in allowed_modes:
+
+# ============================================================
+# Validar alcance
+# ============================================================
+
+if deployment_scope not in scope_configuration:
     raise RuntimeError(
-        f"DEPLOYMENT_MODE no válido: {deployment_mode}. "
-        f"Valores permitidos: {', '.join(sorted(allowed_modes))}"
+        f"DEPLOYMENT_SCOPE no válido: "
+        f"{deployment_scope}. "
+        "Opciones permitidas: "
+        + ", ".join(scope_configuration.keys())
     )
+
+selected_configuration = scope_configuration[
+    deployment_scope
+]
+
+changed_only = selected_configuration[
+    "changed_only"
+]
+
+item_types_in_scope = selected_configuration[
+    "item_types"
+]
 
 
 # ============================================================
-# Determinar tipos en alcance
+# Validación del elemento individual
 # ============================================================
 
-if deployment_mode == "type":
-
-    normalized_type = allowed_item_types_lookup.get(
-        artifact_type.lower()
-    )
-
-    if not normalized_type:
-        raise RuntimeError(
-            f"ARTIFACT_TYPE no permitido: {artifact_type}. "
-            "Valores permitidos: "
-            + ", ".join(allowed_item_types)
-        )
-
-    item_types_in_scope = [normalized_type]
-
-elif deployment_mode == "single":
+if deployment_scope == "single":
 
     if not artifact_name:
         raise RuntimeError(
-            "En modo 'single' debes informar ARTIFACT_NAME, "
-            "por ejemplo: InformeDummy.Report"
+            "Para utilizar el modo 'single' debes informar "
+            "ARTIFACT_NAME con formato Nombre.Tipo. "
+            "Ejemplo: InformeDummy.Report"
         )
 
     if "." not in artifact_name:
         raise RuntimeError(
-            "ARTIFACT_NAME debe tener formato Nombre.Tipo, "
-            "por ejemplo: InformeDummy.Report"
+            "ARTIFACT_NAME debe tener formato Nombre.Tipo. "
+            "Ejemplo: InformeDummy.Report"
         )
 
-    selected_item_type = artifact_name.rsplit(".", 1)[1]
+    selected_item_type = artifact_name.rsplit(
+        ".",
+        1,
+    )[1]
 
-    if selected_item_type.lower() in forbidden_item_types:
-        raise RuntimeError(
-            f"No está permitido desplegar el elemento "
-            f"{artifact_name}."
-        )
-
-    normalized_type = allowed_item_types_lookup.get(
+    selected_item_type_lower = (
         selected_item_type.lower()
     )
 
-    if not normalized_type:
+    if (
+        selected_item_type_lower
+        in forbidden_item_types_lower
+    ):
         raise RuntimeError(
-            f"El tipo '{selected_item_type}' no está permitido. "
-            "Tipos permitidos: "
-            + ", ".join(allowed_item_types)
+            f"No está permitido desplegar "
+            f"'{artifact_name}'. "
+            "Warehouse y Lakehouse están excluidos "
+            "permanentemente."
         )
 
-    item_types_in_scope = [normalized_type]
+    normalized_item_type = (
+        allowed_item_types_lookup.get(
+            selected_item_type_lower
+        )
+    )
+
+    if not normalized_item_type:
+        raise RuntimeError(
+            f"El tipo '{selected_item_type}' "
+            "no está soportado o no está permitido."
+        )
+
+    item_types_in_scope = [
+        normalized_item_type
+    ]
 
 else:
 
-    # Tanto changed como all_allowed quedan restringidos
-    # permanentemente a estos tipos.
-    item_types_in_scope = allowed_item_types
+    # artifact_name se ignora completamente
+    # en cualquier modo distinto de single.
+    if artifact_name:
+        print(
+            "Aviso: ARTIFACT_NAME ha sido informado, "
+            "pero se ignorará porque el alcance "
+            f"seleccionado es '{deployment_scope}'."
+        )
 
 
-print(f"Modo de despliegue: {deployment_mode}")
+# ============================================================
+# Verificación adicional de seguridad
+# ============================================================
+
+# Aunque existiera un error en la configuración de scopes,
+# volvemos a quitar Warehouse y Lakehouse antes de crear
+# FabricWorkspace.
+item_types_in_scope = [
+    item_type
+    for item_type in item_types_in_scope
+    if item_type.lower()
+    not in forbidden_item_types_lower
+]
+
+if not item_types_in_scope:
+    raise RuntimeError(
+        "El alcance seleccionado no contiene "
+        "ningún tipo permitido para desplegar."
+    )
+
+
+# ============================================================
+# Información de ejecución
+# ============================================================
+
 print(
-    "Tipos permitidos en esta ejecución: "
-    + ", ".join(item_types_in_scope)
+    f"Alcance seleccionado: {deployment_scope}"
 )
+
+print(
+    f"Entorno destino: {target_environment}"
+)
+
+print(
+    f"Solo elementos modificados: "
+    f"{changed_only}"
+)
+
+print(
+    "Tipos incluidos en esta ejecución:"
+)
+
+for item_type in item_types_in_scope:
+    print(
+        f" - {item_type}"
+    )
+
+print(
+    "Tipos excluidos permanentemente:"
+)
+
+for forbidden_type in sorted(
+    FORBIDDEN_ITEM_TYPES
+):
+    print(
+        f" - {forbidden_type}"
+    )
 
 
 # ============================================================
@@ -203,15 +384,17 @@ credential = ClientSecretCredential(
 
 
 # ============================================================
-# Feature flags
+# Feature flags fabric-cicd
 # ============================================================
 
-# Evita reproducir en PROD las carpetas del workspace DEV.
+# Evita reproducir en PRO_Gold las carpetas
+# existentes en el workspace DEV.
 append_feature_flag(
     "disable_workspace_folder_publish"
 )
 
-# Requerido para usar items_to_include.
+# Necesario para despliegues selectivos mediante
+# items_to_include.
 append_feature_flag(
     "enable_experimental_features"
 )
@@ -222,65 +405,204 @@ append_feature_flag(
 
 
 # ============================================================
-# Workspace Fabric
+# Workspace Fabric destino
 # ============================================================
 
 fabric_workspace = FabricWorkspace(
     workspace_id=workspace_id,
-    repository_directory=str(repository_directory),
-    item_type_in_scope=item_types_in_scope,
+    environment=target_environment,
+    repository_directory=str(
+        repository_directory
+    ),
+    item_type_in_scope=(
+        item_types_in_scope
+    ),
     token_credential=credential,
 )
 
 
 # ============================================================
-# Determinar elementos concretos
+# Funciones auxiliares
+# ============================================================
+
+def get_item_type(
+    item_name: str,
+) -> Optional"""
+    Obtiene el tipo Fabric a partir del formato:
+
+        NombreElemento.TipoElemento
+
+    Ejemplo:
+
+        InformeDummy.Report
+        Notebook_1.Notebook
+    """
+
+    if "." not in item_name:
+        return None
+
+    return item_name.rsplit(
+        ".",
+        1,
+    )[1]
+
+
+def is_forbidden_item(
+    item_name: str,
+) -> bool:
+    """
+    Comprueba si el elemento es un Warehouse
+    o un Lakehouse.
+    """
+
+    item_type = get_item_type(
+        item_name
+    )
+
+    if not item_type:
+        return False
+
+    return (
+        item_type.lower()
+        in forbidden_item_types_lower
+    )
+
+
+# ============================================================
+# Determinar elementos concretos a publicar
 # ============================================================
 
 items_to_include = None
 
-if deployment_mode == "changed":
+
+# ------------------------------------------------------------
+# Modo single
+# ------------------------------------------------------------
+
+if deployment_scope == "single":
+
+    if is_forbidden_item(
+        artifact_name
+    ):
+        raise RuntimeError(
+            f"El elemento '{artifact_name}' "
+            "no puede desplegarse."
+        )
+
+    items_to_include = [
+        artifact_name
+    ]
+
+
+# ------------------------------------------------------------
+# Modos changed_*
+# ------------------------------------------------------------
+
+elif changed_only:
 
     print(
-        "Buscando elementos modificados respecto a: "
-        f"{git_compare_ref}"
+        "Detectando elementos modificados "
+        f"respecto a: {git_compare_ref}"
     )
 
-    detected_items = get_changed_items(
-        repository_directory=repository_directory,
-        git_compare_ref=git_compare_ref,
+    detected_changed_items = (
+        get_changed_items(
+            repository_directory=(
+                repository_directory
+            ),
+            git_compare_ref=(
+                git_compare_ref
+            ),
+        )
     )
 
     print(
-        "Elementos modificados detectados por Git: "
-        f"{detected_items}"
+        "Elementos modificados detectados "
+        "por Git:"
     )
 
-    # Seguridad adicional:
-    # aunque Git detecte un Warehouse o Lakehouse,
-    # no debe entrar en el despliegue.
+    if detected_changed_items:
+        for changed_item in (
+            detected_changed_items
+        ):
+            print(
+                f" - {changed_item}"
+            )
+    else:
+        print(
+            " - Ninguno"
+        )
+
+    selected_item_types_lower = {
+        item_type.lower()
+        for item_type
+        in item_types_in_scope
+    }
+
     items_to_include = []
 
-    for item in detected_items:
+    for changed_item in (
+        detected_changed_items
+    ):
 
-        if "." not in item:
+        changed_item_type = (
+            get_item_type(
+                changed_item
+            )
+        )
+
+        if not changed_item_type:
+            print(
+                "Elemento ignorado porque no "
+                "tiene formato Nombre.Tipo: "
+                f"{changed_item}"
+            )
             continue
 
-        item_type = item.rsplit(".", 1)[1]
+        changed_item_type_lower = (
+            changed_item_type.lower()
+        )
 
-        if item_type.lower() in allowed_item_types_lookup:
-            items_to_include.append(item)
+        # Exclusión absoluta.
+        if (
+            changed_item_type_lower
+            in forbidden_item_types_lower
+        ):
+            print(
+                "Elemento excluido "
+                "permanentemente: "
+                f"{changed_item}"
+            )
+            continue
+
+        # Filtrado por el alcance seleccionado.
+        if (
+            changed_item_type_lower
+            not in selected_item_types_lower
+        ):
+            print(
+                "Elemento fuera del alcance "
+                "seleccionado: "
+                f"{changed_item}"
+            )
+            continue
+
+        items_to_include.append(
+            changed_item
+        )
 
     if not items_to_include:
         print(
-            "No se han detectado elementos Fabric permitidos "
-            "para desplegar."
+            "No se han detectado elementos "
+            "Fabric modificados dentro del "
+            "alcance permitido."
         )
+
+        print(
+            "No se realizará ningún despliegue."
+        )
+
         sys.exit(0)
-
-elif deployment_mode == "single":
-
-    items_to_include = [artifact_name]
 
 
 # ============================================================
@@ -290,25 +612,52 @@ elif deployment_mode == "single":
 if items_to_include is not None:
 
     print(
-        "Elementos que se desplegarán: "
-        + ", ".join(items_to_include)
+        "Elementos seleccionados para "
+        "el despliegue:"
     )
+
+    for selected_item in (
+        items_to_include
+    ):
+        print(
+            f" - {selected_item}"
+        )
 
     publish_all_items(
         fabric_workspace,
-        items_to_include=items_to_include,
+        items_to_include=(
+            items_to_include
+        ),
     )
 
 else:
 
+    # Aplicable a:
+    #
+    # all_allowed
+    # all_reports
+    # all_semantic_models
+    # all_notebooks
+    # all_data_pipelines
+    # all_variable_libraries
+
     print(
-        "Se desplegarán todos los elementos de los tipos: "
-        + ", ".join(item_types_in_scope)
+        "Se desplegarán todos los elementos "
+        "de los siguientes tipos:"
     )
+
+    for item_type in (
+        item_types_in_scope
+    ):
+        print(
+            f" - {item_type}"
+        )
 
     publish_all_items(
         fabric_workspace
     )
 
 
-print("Despliegue completado correctamente.")
+print(
+    "Despliegue completado correctamente."
+)
