@@ -3,7 +3,6 @@ name: Deploy Fabric PROD
 on:
   workflow_dispatch:
     inputs:
-
       deployment_mode:
         description: "Modo de despliegue"
         required: true
@@ -17,56 +16,34 @@ on:
           - single
 
       artifact_types:
-        description: "Para changed_selected o all_selected. Tipos separados por comas. Ejemplo: Report,SemanticModel"
+        description: "Para changed_selected o all_selected. Ejemplo: Report,SemanticModel"
         required: false
         type: string
 
       artifact_names:
-        description: "Solo para single. Elementos separados por comas. Ejemplo: InformeDummy.Report,ModeloSematicoAutoservicio_DirectLake.SemanticModel"
+        description: "Para single. Ejemplo: InformeDummy.Report,ModeloVentas.SemanticModel"
         required: false
         type: string
 
-
 jobs:
-
   deploy-fabric-prod:
-
     name: Deploy Fabric PROD
-
     runs-on: ubuntu-latest
-
     environment: PROD
 
     permissions:
       contents: read
 
     steps:
-
-      # ======================================================
-      # Descargar repositorio
-      # ======================================================
-
       - name: Checkout repositorio
         uses: actions/checkout@v5
         with:
-          # Es necesario todo el historial para poder
-          # comparar commits con get_changed_items.
           fetch-depth: 0
-
-
-      # ======================================================
-      # Configurar Python
-      # ======================================================
 
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
-
-      # ======================================================
-      # Instalar dependencias
-      # ======================================================
 
       - name: Actualizar pip
         run: |
@@ -76,12 +53,11 @@ jobs:
         run: |
           python -m pip install fabric-cicd==1.3.0
 
+      - name: Validar sintaxis de deploy.py
+        run: |
+          python -m py_compile deploy.py
 
-      # ======================================================
-      # Mostrar información de ejecución
-      # ======================================================
-
-      - name: Mostrar configuración del despliegue
+      - name: Mostrar configuración
         run: |
           echo "Modo: ${{ inputs.deployment_mode }}"
           echo "Tipos: ${{ inputs.artifact_types }}"
@@ -89,53 +65,20 @@ jobs:
           echo "Rama: ${{ github.ref_name }}"
           echo "Commit: ${{ github.sha }}"
 
-
-      # ======================================================
-      # Ejecutar despliegue
-      # ======================================================
-
       - name: Ejecutar despliegue a PRO_Gold
         env:
-
-          # --------------------------------------------------
-          # Service Principal
-          # --------------------------------------------------
-
           CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
           TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
 
-
-          # --------------------------------------------------
-          # Workspace Fabric destino
-          # --------------------------------------------------
-
           TARGET_WORKSPACE_ID: ${{ secrets.FABRIC_PROD_WORKSPACE_ID }}
-
-
-          # --------------------------------------------------
-          # Configuración del despliegue
-          # --------------------------------------------------
+          TARGET_ENVIRONMENT: PROD
 
           DEPLOYMENT_MODE: ${{ inputs.deployment_mode }}
-
           ARTIFACT_TYPES: ${{ inputs.artifact_types }}
-
           ARTIFACT_NAMES: ${{ inputs.artifact_names }}
 
-
-          # --------------------------------------------------
-          # Referencia para detección de cambios
-          # --------------------------------------------------
-
           GIT_COMPARE_REF: HEAD~1
-
-
-          # --------------------------------------------------
-          # Entorno utilizado por parameter.yml
-          # --------------------------------------------------
-
-          TARGET_ENVIRONMENT: PROD
 
         run: |
           python deploy.py
