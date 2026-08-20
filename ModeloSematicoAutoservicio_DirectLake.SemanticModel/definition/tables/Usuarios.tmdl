@@ -1,0 +1,44 @@
+table Usuarios
+	lineageTag: 668ecb3f-703d-41bd-92f1-9d375d43d684
+	sourceLineageTag: [dbo].[Usuarios]
+
+	column Email
+		dataType: string
+		sourceProviderType: varchar(100)
+		lineageTag: 5bdf4e9c-8149-42cc-a0ec-9981943cd34d
+		sourceLineageTag: Email
+		summarizeBy: none
+		sourceColumn: Email
+
+		annotation SummarizationSetBy = Automatic
+
+	column Valor
+		dataType: int64
+		formatString: 0
+		sourceProviderType: int
+		lineageTag: 6a191ad9-a28c-4d33-ba76-047f01333250
+		sourceLineageTag: Valor
+		summarizeBy: sum
+		sourceColumn: Valor
+
+		annotation SummarizationSetBy = Automatic
+
+	column Pais
+		dataType: string
+		sourceProviderType: varchar(50)
+		lineageTag: 249d019f-f58e-4268-be4b-e64b1aaf3dac
+		sourceLineageTag: Pais
+		summarizeBy: none
+		sourceColumn: Pais
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Usuarios = entity
+		mode: directLake
+		source
+			entityName: Usuarios
+			schemaName: dbo
+			expressionSource: DatabaseQuery
+
+	annotation PBI_ResultType = Table
+

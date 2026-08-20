@@ -1,0 +1,7 @@
+role 'Sin título'
+	modelPermission: read
+
+	tablePermission Usuarios = [Email] == USERPRINCIPALNAME()
+
+	annotation PBI_Id = bd448b47471e43929a4cfe83e43ab0e8
+

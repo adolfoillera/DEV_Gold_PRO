@@ -1,0 +1,122 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "57ab0917c038323ab65e",
+  "position": {
+    "x": 119.07461544099085,
+    "y": 90.056431846127538,
+    "z": 0,
+    "height": 331.20754378964682,
+    "width": 827.51854596386079,
+    "tabOrder": 0
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Usuarios"
+                    }
+                  },
+                  "Property": "Email"
+                }
+              },
+              "queryRef": "Usuarios.Email",
+              "nativeQueryRef": "Email"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Usuarios"
+                    }
+                  },
+                  "Property": "Pais"
+                }
+              },
+              "queryRef": "Usuarios.Pais",
+              "nativeQueryRef": "Pais"
+            },
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Usuarios"
+                        }
+                      },
+                      "Property": "Valor"
+                    }
+                  },
+                  "Function": 0
+                }
+              },
+              "queryRef": "Sum(Usuarios.Valor)",
+              "nativeQueryRef": "Suma de Valor"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "e6a4b63da6cd1d88312a",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Usuarios"
+              }
+            },
+            "Property": "Email"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "dc0636224cedc85b1227",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Usuarios"
+              }
+            },
+            "Property": "Pais"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "9c5def0c35b67cde63ec",
+        "field": {
+          "Aggregation": {
+            "Expression": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Usuarios"
+                  }
+                },
+                "Property": "Valor"
+              }
+            },
+            "Function": 0
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Warehouse",
+    "displayName": "Gold",
+    "description": "Warehouse inicial para capa Gold"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "7a09d050-2572-90d6-4e24-04e63eda1887"
+  }
+}
