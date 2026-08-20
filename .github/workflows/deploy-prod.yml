@@ -1,0 +1,40 @@
+name: Deploy Fabric PROD
+
+on:
+  workflow_dispatch
+
+jobs:
+
+  deploy-fabric-prod:
+
+    runs-on: ubuntu-latest
+
+    environment: PROD
+
+    steps:
+
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Actualizar pip
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Instalar Fabric CICD
+        run: |
+          pip install fabric-cicd
+
+      - name: Ejecutar Deploy
+        env:
+          CLIENT_ID: ${{ secrets.FABRIC_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.FABRIC_CLIENT_SECRET }}
+          TENANT_ID: ${{ secrets.FABRIC_TENANT_ID }}
+          TARGET_WORKSPACE_ID: ${{ secrets.FABRIC_PROD_WORKSPACE_ID }}
+
+        run: |
+          python scripts/deploy.py
