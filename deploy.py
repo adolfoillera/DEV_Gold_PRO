@@ -1,9 +1,9 @@
-#scripts/deploy.py
-
 import os
+
 from azure.identity import ClientSecretCredential
 from fabric_cicd import (
     FabricWorkspace,
+    append_feature_flag,
     publish_all_items,
     unpublish_all_orphan_items,
 )
@@ -12,24 +12,24 @@ from fabric_cicd import (
 # Directorios
 # ==========================================
 
-# scripts/
-script_dir = os.path.dirname(os.path.abspath(__file__))
+# El fichero deploy.py está en la raíz
+# del repositorio.
+repo_root = os.path.dirname(os.path.abspath(__file__))
 
-# REPO ROOT
-repo_root = os.path.abspath(os.path.join(script_dir, ".."))
-
-# Carpeta inicial de los artefactos
+# Los elementos de Fabric están directamente
+# en la raíz del repositorio.
 repository_directory = repo_root
 
 if not os.path.isdir(repository_directory):
     raise Exception(
-        f"No existe el directorio del repositorio: {repository_directory}"
+        f"No existe el directorio del repositorio: "
+        f"{repository_directory}"
     )
 
 print(f"Repositorio Fabric: {repository_directory}")
 
 # ==========================================
-# Variables de entorno (OBLIGATORIAS)
+# Variables de entorno obligatorias
 # ==========================================
 
 client_id = os.getenv("CLIENT_ID")
@@ -38,7 +38,8 @@ tenant_id = os.getenv("TENANT_ID")
 workspace_id = os.getenv("TARGET_WORKSPACE_ID")
 
 missing = [
-    name for name, value in {
+    name
+    for name, value in {
         "CLIENT_ID": client_id,
         "CLIENT_SECRET": client_secret,
         "TENANT_ID": tenant_id,
@@ -48,7 +49,9 @@ missing = [
 ]
 
 if missing:
-    raise Exception(f"Faltan variables de entorno: {', '.join(missing)}")
+    raise Exception(
+        f"Faltan variables de entorno: {', '.join(missing)}"
+    )
 
 # ==========================================
 # Autenticación
@@ -61,7 +64,19 @@ credential = ClientSecretCredential(
 )
 
 # ==========================================
-# Workspace Fabric
+# Configuración fabric-cicd
+# ==========================================
+
+# Evita reproducir Workspace Folders en PROD.
+# Los elementos se publicarán en la raíz de PRO_Gold.
+append_feature_flag("disable_workspace_folder_publish")
+
+print(
+    "Publicación de Workspace Folders desactivada."
+)
+
+# ==========================================
+# Workspace Fabric destino
 # ==========================================
 
 fabric_workspace = FabricWorkspace(
@@ -71,14 +86,15 @@ fabric_workspace = FabricWorkspace(
 )
 
 # ==========================================
-# Deploy
+# Despliegue
 # ==========================================
 
 print("Publicando artefactos en Fabric...")
+
 publish_all_items(fabric_workspace)
 
 print("Eliminando artefactos huérfanos...")
+
 unpublish_all_orphan_items(fabric_workspace)
 
 print("Deploy completado correctamente")
-
