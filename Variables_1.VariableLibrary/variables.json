@@ -1,4 +1,11 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/variables/1.0.0/schema.json",
-  "variables": []
+  "variables": [
+    {
+      "name": "Notebook",
+      "note": "",
+      "type": "String",
+      "value": "73a3d8dc-4ac5-42f0-b476-f54eed0db066"
+    }
+  ]
 }
