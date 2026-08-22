@@ -1,34 +1,20 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
-  "name": "57ab0917c038323ab65e",
+  "name": "6d43e746530e594e7392",
   "position": {
-    "x": 119.07461544099085,
-    "y": 90.056431846127538,
-    "z": 0,
-    "height": 331.20754378964682,
-    "width": 827.51854596386079,
-    "tabOrder": 0
+    "x": 119,
+    "y": 431,
+    "z": 1,
+    "height": 331,
+    "width": 828,
+    "tabOrder": 1
   },
   "visual": {
-    "visualType": "tableEx",
+    "visualType": "donutChart",
     "query": {
       "queryState": {
-        "Values": {
+        "Category": {
           "projections": [
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "Usuarios"
-                    }
-                  },
-                  "Property": "Correo"
-                }
-              },
-              "queryRef": "Usuarios.Correo",
-              "nativeQueryRef": "Correo"
-            },
             {
               "field": {
                 "Column": {
@@ -41,8 +27,13 @@
                 }
               },
               "queryRef": "Usuarios.Pais",
-              "nativeQueryRef": "Pais"
-            },
+              "nativeQueryRef": "Pais",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
             {
               "field": {
                 "Aggregation": {
@@ -64,6 +55,29 @@
             }
           ]
         }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Aggregation": {
+                "Expression": {
+                  "Column": {
+                    "Expression": {
+                      "SourceRef": {
+                        "Entity": "Usuarios"
+                      }
+                    },
+                    "Property": "Valor"
+                  }
+                },
+                "Function": 0
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
       }
     },
     "drillFilterOtherVisuals": true
@@ -71,7 +85,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "dc0636224cedc85b1227",
+        "name": "d8392b121e3c1b0bf87f",
         "field": {
           "Column": {
             "Expression": {
@@ -85,7 +99,7 @@
         "type": "Categorical"
       },
       {
-        "name": "9c5def0c35b67cde63ec",
+        "name": "2e5cd71922164b9676d6",
         "field": {
           "Aggregation": {
             "Expression": {
@@ -102,20 +116,6 @@
           }
         },
         "type": "Advanced"
-      },
-      {
-        "name": "16e6287c381596cda16e",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "Usuarios"
-              }
-            },
-            "Property": "Correo"
-          }
-        },
-        "type": "Categorical"
       }
     ]
   }

@@ -2,13 +2,15 @@ table Usuarios
 	lineageTag: 668ecb3f-703d-41bd-92f1-9d375d43d684
 	sourceLineageTag: [dbo].[Usuarios]
 
-	column Email
+	column Correo
 		dataType: string
 		sourceProviderType: varchar(100)
 		lineageTag: 5bdf4e9c-8149-42cc-a0ec-9981943cd34d
 		sourceLineageTag: Email
 		summarizeBy: none
 		sourceColumn: Email
+
+		changedProperty = Name
 
 		annotation SummarizationSetBy = Automatic
 
