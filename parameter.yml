@@ -1,0 +1,11 @@
+semantic_model_binding:
+
+  default:
+
+    connection_id:
+
+      DEV: "a4a18d3d-7c09-42db-83bd-a88d7be9b696"
+
+      PROD: "6329b5cf-da60-453d-9292-a6297304501d"
+
+      REPORTING_PRO: "6329b5cf-da60-453d-9292-a6297304501d"
