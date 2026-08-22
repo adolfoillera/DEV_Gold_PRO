@@ -1,11 +1,29 @@
-semantic_model_binding:
+find_replace:
 
-  default:
+  #
+  # SQL Endpoint de DEV
+  #
+  - find_value: "uoayndljxlaengm4orwol6lqbq-zvvxcdb3kytedhpxx4b2o3mnte.datawarehouse.fabric.microsoft.com"
 
-    connection_id:
+    replace_value:
 
-      DEV: "a4a18d3d-7c09-42db-83bd-a88d7be9b696"
+      DEV: "uoayndljxlaengm4orwol6lqbq-zvvxcdb3kytedhpxx4b2o3mnte.datawarehouse.fabric.microsoft.com"
 
-      PROD: "6329b5cf-da60-453d-9292-a6297304501d"
+      PROD: "uoayndljxlaengm4orwol6lqbq-xj2pealj3ate5p4ib5iyzl5bjm.datawarehouse.fabric.microsoft.com"
 
-      REPORTING_PRO: "6329b5cf-da60-453d-9292-a6297304501d"
+      REPORTING_PRO: "uoayndljxlaengm4orwol6lqbq-xj2pealj3ate5p4ib5iyzl5bjm.datawarehouse.fabric.microsoft.com"
+
+
+  #
+  # Warehouse GUID de DEV
+  #
+  - find_value: "3eda1887-04e6-4e24-90d6-25727a09d050"
+
+    replace_value:
+
+      DEV: "3eda1887-04e6-4e24-90d6-25727a09d050"
+
+      PROD: "01f274ba-d869-4e26-bf88-0f518cafa14b"
+
+      REPORTING_PRO: "01f274ba-d869-4e26-bf88-0f518cafa14b"
+``
